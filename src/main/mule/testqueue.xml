@@ -90,7 +90,7 @@ output application/java
 	
 </flow>
 	<flow name="sqs-receive-message-flow" >
-		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" preserveMessages="true" primaryNodeOnly="true" numberOfConsumingThreads="3" waitTime="0"/>
+		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" preserveMessages="true" waitTime="0"/>
 		<ee:transform doc:name="Transform Message" doc:id="a7154f23-c96c-4acd-916d-dfd81fc17c66" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
