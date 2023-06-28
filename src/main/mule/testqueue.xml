@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http
+  http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+  http://www.mulesoft.org/schema/mule/ee/core
+  http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+  http://www.mulesoft.org/schema/mule/sqs
+	http://www.mulesoft.org/schema/mule/sqs/current/mule-sqs.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<sqs:config name="Amazon_SQS_Configuration" doc:name="Amazon SQS Configuration" doc:id="3a2a37e9-4eea-4409-b9db-ddc9d7734917" >
+		<sqs:basic-connection testQueueArn="arn:aws:sqs:us-east-1:263584434972:bics.fifo" accessKey="AKIAT2XW3JMOPIO62RU2" secretKey="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" />
+	</sqs:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="e0e1e169-440d-4f8c-b530-40b4a908d038" >
+	</file:config>
+	<flow name="sqs-send-messageFlow" >
+		<http:listener doc:name="Listener"
+		config-ref="HTTP_Listener_config"
+		path="/testfifo"/>
+		<file:read doc:name="Read" doc:id="cac9a491-81c8-4096-bbbc-4dc55f715155" config-ref="File_Config" path="${mule.home}/apps/${app.name}/CustomerUpdateList.csv"/>
+		<foreach doc:name="For Each" doc:id="d94df06f-b9c3-4902-a074-f2099f6acd18" collection="#[payload]">
+			<logger level="INFO" doc:name="Logger" doc:id="44321cbd-5ea5-4a7b-978f-c616355c7235" />
+			<ee:transform doc:name="Transform Message" doc:id="1e0bd624-857a-4ac1-9de4-5849fd6a9178" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<ee:transform doc:name="Transform Message" doc:id="9e29e43e-c3a3-4f09-96f3-7e863654535d" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+    delaySeconds: 0,
+    body: "correlationId" ++ correlationId,
+    deduplicationId: payload[0].messageId,
+    groupId: payload[0].groupId,
+    messageAttributes: {
+        "customerId": {
+            "stringValue" :payload[0].customerId,
+            "dataType" : "String.customerId"
+        } as Object {
+            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
+        },
+        "customerName": {
+            "stringValue" :payload[0].customerName,
+            "dataType" : "String.customerName"
+        } as Object {
+            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
+        },
+        "replayId": {
+            "stringValue" : payload[0].replayId,
+            "dataType" : "Number"
+        } as Object {
+            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
+        },
+        "updateValue": {
+            "stringValue" : payload[0].updateValue,
+            "dataType" : "Number"
+        } as Object {
+            class : "org.mule.extension.sqs.api.model.MessageAttributeValue"
+        } 
+    } as Object {
+        class: "java.util.HashMap"
+    }
+} as Object {
+    class: "org.mule.extension.sqs.api.model.Message"
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Logger" doc:id="59be58c1-f729-4602-9713-6fbb28e585ca" message='#[payload[0].updateValue]'/>
+			<sqs:send-message doc:name="Send message TestQueue" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" />
+			<logger level="INFO" doc:name="Log Response" message="payload" />
+			<sqs:get-approximate-number-of-messages doc:name="Get approximate number of messages TestQueue" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" config-ref="Amazon_SQS_Configuration" />
+			<logger level="INFO" doc:name="Log Count" message="Sent Message: `#[payload]`" />
+		</foreach>
+	
+</flow>
+	<flow name="sqs-receive-message-flow" >
+		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo"/>
+		<ee:transform doc:name="Transform Message" doc:id="a7154f23-c96c-4acd-916d-dfd81fc17c66" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Log Receipt" message="#[attributes.updateValue.stringValue]"/>
+	</flow>
+
+</mule>
