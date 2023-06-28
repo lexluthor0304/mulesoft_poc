@@ -21,6 +21,9 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 	</sqs:config>
 	<file:config name="File_Config" doc:name="File Config" doc:id="e0e1e169-440d-4f8c-b530-40b4a908d038" >
 	</file:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="627d3f32-0175-4012-b6c5-757d32ad28fd" >
+		<db:my-sql-connection host="bics.cydayjrmccnx.us-east-1.rds.amazonaws.com" port="3306" user="bics" password="bics" database="bics" />
+	</db:config>
 	<flow name="sqs-send-messageFlow" >
 		<http:listener doc:name="Listener"
 		config-ref="HTTP_Listener_config"
@@ -81,14 +84,15 @@ output application/java
 			</ee:transform>
 			<logger level="INFO" doc:name="Logger" doc:id="59be58c1-f729-4602-9713-6fbb28e585ca" message='#[payload[0].updateValue]'/>
 			<sqs:send-message doc:name="Send message TestQueue" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" />
-			<logger level="INFO" doc:name="Log Response" message="payload" />
+			<logger level="INFO" doc:name="Log Response" message='#[payload]' />
+			<logger level="INFO" doc:name="Logger" doc:id="24e21693-6993-4af2-8fbe-fe97f53e4d22" message="sent success!!!!"/>
 			<sqs:get-approximate-number-of-messages doc:name="Get approximate number of messages TestQueue" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" config-ref="Amazon_SQS_Configuration" />
 			<logger level="INFO" doc:name="Log Count" message="Sent Message: `#[payload]`" />
 		</foreach>
 	
 </flow>
 	<flow name="sqs-receive-message-flow" >
-		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo"/>
+		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" preserveMessages="true"/>
 		<ee:transform doc:name="Transform Message" doc:id="a7154f23-c96c-4acd-916d-dfd81fc17c66" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
@@ -97,7 +101,13 @@ output application/java
 payload]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<logger level="INFO" doc:name="Log Receipt" message="#[attributes.updateValue.stringValue]"/>
+		<logger level="INFO" doc:name="Log Receipt" message="#[attributes.updateValue.stringValue]" />
+		<db:insert doc:name="Insert" doc:id="dc298759-c1c0-47a7-8bb3-653bb72a98be" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert into customer1(cid,val)values(:cid,:val)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{cid:attributes.updateValue.stringValue, 
+ val:attributes.updateValue.stringValue	
+}]]]></db:input-parameters>
+		</db:insert>
 	</flow>
 
 </mule>
