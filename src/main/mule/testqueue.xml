@@ -24,11 +24,8 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 	<db:config name="Database_Config" doc:name="Database Config" doc:id="627d3f32-0175-4012-b6c5-757d32ad28fd" >
 		<db:my-sql-connection host="bics.cydayjrmccnx.us-east-1.rds.amazonaws.com" port="3306" user="bics" password="bics" database="bics" />
 	</db:config>
-	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="81eadc97-0170-4fb6-b6ad-198c2ec09c0d" >
-		<http:listener-connection host="0.0.0.0" port="8081" />
-	</http:listener-config>
 	<flow name="sqs-send-messageFlow" >
-		<http:listener doc:id="574426d1-761d-45e5-9095-77ffef381a5f" doc:name="" config-ref="HTTP_Listener_config1" path="/testfifo"/>
+		<http:listener doc:id="574426d1-761d-45e5-9095-77ffef381a5f" doc:name="" config-ref="HTTP_Listener_config" path="/testfifo"/>
 		<file:read doc:name="Read" doc:id="cac9a491-81c8-4096-bbbc-4dc55f715155" config-ref="File_Config" path="${mule.home}/apps/${app.name}/CustomerUpdateList.csv"/>
 		<foreach doc:name="For Each" doc:id="d94df06f-b9c3-4902-a074-f2099f6acd18" collection="#[payload]">
 			<logger level="INFO" doc:name="Logger" doc:id="44321cbd-5ea5-4a7b-978f-c616355c7235" />
