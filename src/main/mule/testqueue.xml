@@ -25,9 +25,7 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 		<db:my-sql-connection host="bics.cydayjrmccnx.us-east-1.rds.amazonaws.com" port="3306" user="bics" password="bics" database="bics" />
 	</db:config>
 	<flow name="sqs-send-messageFlow" >
-		<http:listener doc:name="Listener"
-		config-ref="HTTP_Listener_config"
-		path="/testfifo"/>
+		<http:listener doc:id="574426d1-761d-45e5-9095-77ffef381a5f" doc:name="" config-ref="HTTP_Listener_config" path="/testfifo"/>
 		<file:read doc:name="Read" doc:id="cac9a491-81c8-4096-bbbc-4dc55f715155" config-ref="File_Config" path="${mule.home}/apps/${app.name}/CustomerUpdateList.csv"/>
 		<foreach doc:name="For Each" doc:id="d94df06f-b9c3-4902-a074-f2099f6acd18" collection="#[payload]">
 			<logger level="INFO" doc:name="Logger" doc:id="44321cbd-5ea5-4a7b-978f-c616355c7235" />
