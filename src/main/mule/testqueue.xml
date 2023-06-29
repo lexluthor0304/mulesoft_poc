@@ -106,6 +106,7 @@ payload]]></ee:set-payload>
  val:attributes.updateValue.stringValue	
 }]]]></db:input-parameters>
 		</db:insert>
+		<sqs:change-message-visibility doc:name="Change message visibility" doc:id="8abb1220-e758-4d4d-b154-00da3125158a" config-ref="Amazon_SQS_Configuration" visibilityTimeout="0" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo"/>
 	</flow>
 
 </mule>
