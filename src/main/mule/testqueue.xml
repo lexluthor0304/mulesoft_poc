@@ -18,7 +18,7 @@ http://www.mulesoft.org/schema/mule/salesforce-pub-sub http://www.mulesoft.org/s
 		<http:listener-connection host="0.0.0.0" port="8081" />
 	</http:listener-config>
 	<sqs:config name="Amazon_SQS_Configuration" doc:name="Amazon SQS Configuration" doc:id="3a2a37e9-4eea-4409-b9db-ddc9d7734917" >
-		<sqs:basic-connection testQueueArn="arn:aws:sqs:us-east-1:263584434972:bicsTest.fifo" accessKey="AKIAT2XW3JMOPIO62RU2" secretKey="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" />
+		<sqs:basic-connection testQueueArn="arn:aws:sqs:us-east-1:263584434972:bicsTest2.fifo" accessKey="AKIAT2XW3JMOPIO62RU2" secretKey="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" />
 	</sqs:config>
 	<file:config name="File_Config" doc:name="File Config" doc:id="e0e1e169-440d-4f8c-b530-40b4a908d038" >
 		<file:connection workingDir="${mule.home}/apps/${app.name}" />
@@ -35,7 +35,9 @@ http://www.mulesoft.org/schema/mule/salesforce-pub-sub http://www.mulesoft.org/s
 				<salesforce-pub-sub:latest />
 			</salesforce-pub-sub:replay-option>
 		</salesforce-pub-sub:subscribe-channel-listener>
-		<ee:transform doc:name="Transform Message" doc:id="9e29e43e-c3a3-4f09-96f3-7e863654535d">
+		<scatter-gather doc:name="Scatter-Gather" doc:id="89832409-439f-49f0-9082-52817eee20d8" >
+			<route >
+				<ee:transform doc:name="Transform Message" doc:id="9e29e43e-c3a3-4f09-96f3-7e863654535d">
 				<ee:message>
 					<ee:set-payload><![CDATA[%dw 2.0
 output application/java
@@ -78,12 +80,65 @@ output application/java
 }]]></ee:set-payload>
 				</ee:message>
 			</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="59be58c1-f729-4602-9713-6fbb28e585ca" message="#[payload.event.Name__c]" />
-		<sqs:send-message doc:name="Send message TestQueue" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" />
-		<logger level="INFO" doc:name="Log Response" message="sssss"/>
-		<logger level="INFO" doc:name="Logger" doc:id="24e21693-6993-4af2-8fbe-fe97f53e4d22" message="sent success!!!!" />
-		<sqs:get-approximate-number-of-messages doc:name="Get approximate number of messages TestQueue" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" config-ref="Amazon_SQS_Configuration" />
-		<logger level="INFO" doc:name="Log Count" message="Sent Message: `#[payload]`" />
+				<logger level="INFO" doc:name="Logger" doc:id="59be58c1-f729-4602-9713-6fbb28e585ca" message="#[payload.event.Name__c]" />
+				<sqs:send-message doc:name="Send message TestQueue" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" />
+				<logger level="INFO" doc:name="Log Response" message="sssss" />
+				<logger level="INFO" doc:name="Logger" doc:id="24e21693-6993-4af2-8fbe-fe97f53e4d22" message="sent success!!!!" />
+				<sqs:get-approximate-number-of-messages doc:name="Get approximate number of messages TestQueue" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" config-ref="Amazon_SQS_Configuration" />
+				<logger level="INFO" doc:name="Log Count" message="Sent Message: `#[payload]`" />
+			</route>
+			<route >
+				<ee:transform doc:name="Transform Message1" doc:id="b926c33b-9202-46dc-9ec6-4d8e782c5cf9">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+---
+{
+    delaySeconds: 0,
+    body: payload.replayId,
+    deduplicationId: payload.replayId,
+    groupId: payload.event.Id__c,
+    messageAttributes: {
+        "customerId": {
+            "stringValue" :payload.event.Id__c,
+            "dataType" : "String"
+        } as Object {
+            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
+        },
+        "customerName": {
+            "stringValue" :payload.event.Name__c,
+            "dataType" : "String"
+        } as Object {
+            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
+        },
+        "replayId": {
+            "stringValue" : payload.replayId,
+            "dataType" : "String"
+        } as Object {
+            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
+        },
+        "updateValue": {
+            "stringValue" : payload.event.Name__c,
+            "dataType" : "String"
+        } as Object {
+            class : "org.mule.extension.sqs.api.model.MessageAttributeValue"
+        } 
+    } as Object {
+        class: "java.util.HashMap"
+    }
+} as Object {
+    class: "org.mule.extension.sqs.api.model.Message"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger1" doc:id="0863e0c7-92e6-4f9d-a064-4ce63f7edcaa" message="#[payload.event.Name__c]" />
+				<sqs:send-message doc:name="Send message TestQueue1" doc:id="4869d84b-2720-44d7-aeeb-0c19acd5b94e" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest2.fifo" />
+				<logger level="INFO" doc:name="Log Response1" doc:id="a9154426-5d2e-4098-b9c2-25cbb8a12434" message="sssss" />
+				<logger level="INFO" doc:name="Logger1" doc:id="ba926246-62fb-473a-b50d-5327e8a03c88" message="sent success!!!!" />
+				<sqs:get-approximate-number-of-messages doc:name="Get approximate number of messages TestQueue1" doc:id="49c18364-59b7-49b8-94a0-d676a5624589" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest2.fifo" />
+				<logger level="INFO" doc:name="Log Count1" doc:id="ed94713e-0528-4658-9ce8-fab15bac3259" message="Sent Message: `#[payload]`" />
+			</route>
+		</scatter-gather>
 	
 </flow>
 
