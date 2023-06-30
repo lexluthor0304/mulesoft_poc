@@ -29,62 +29,19 @@ http://www.mulesoft.org/schema/mule/salesforce-pub-sub http://www.mulesoft.org/s
 	<salesforce-pub-sub:pubsub-config name="Salesforce_PubSub_Config" doc:name="Salesforce PubSub Config" doc:id="b368ed69-836b-4f09-9a1f-d93370d54eb6" >
 		<salesforce-pub-sub:basic-connection username="heng.cai@wise-bear-42dslc.com" password="Caiheng123" securityToken="MIaRYASRjwmfodc2fAVXCqDC" />
 	</salesforce-pub-sub:pubsub-config>
-	<flow name="sqs-send-messageFlow" >
-		<salesforce-pub-sub:subscribe-channel-listener doc:name="Subscribe channel listener" doc:id="a91667c7-614c-4306-856a-6931e9c1f0ae" config-ref="Salesforce_PubSub_Config" channelName="/event/PE_Acc__e">
-			<salesforce-pub-sub:replay-option >
-				<salesforce-pub-sub:latest />
-			</salesforce-pub-sub:replay-option>
-		</salesforce-pub-sub:subscribe-channel-listener>
-		<ee:transform doc:name="Transform Message" doc:id="9e29e43e-c3a3-4f09-96f3-7e863654535d">
-				<ee:message>
-					<ee:set-payload><![CDATA[%dw 2.0
-output application/java
----
-{
-    delaySeconds: 0,
-    body: payload.replayId,
-    deduplicationId: payload.replayId,
-    groupId: payload.event.Id__c,
-    messageAttributes: {
-        "customerId": {
-            "stringValue" :payload.event.Id__c,
-            "dataType" : "String"
-        } as Object {
-            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
-        },
-        "customerName": {
-            "stringValue" :payload.event.Name__c,
-            "dataType" : "String"
-        } as Object {
-            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
-        },
-        "replayId": {
-            "stringValue" : payload.replayId,
-            "dataType" : "String"
-        } as Object {
-            class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
-        },
-        "updateValue": {
-            "stringValue" : payload.event.Name__c,
-            "dataType" : "String"
-        } as Object {
-            class : "org.mule.extension.sqs.api.model.MessageAttributeValue"
-        } 
-    } as Object {
-        class: "java.util.HashMap"
-    }
-} as Object {
-    class: "org.mule.extension.sqs.api.model.Message"
-}]]></ee:set-payload>
-				</ee:message>
-			</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="59be58c1-f729-4602-9713-6fbb28e585ca" message="#[payload.event.Name__c]" />
-		<sqs:send-message doc:name="Send message TestQueue" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" />
-		<logger level="INFO" doc:name="Log Response" message="sssss"/>
-		<logger level="INFO" doc:name="Logger" doc:id="24e21693-6993-4af2-8fbe-fe97f53e4d22" message="sent success!!!!" />
-		<sqs:get-approximate-number-of-messages doc:name="Get approximate number of messages TestQueue" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" config-ref="Amazon_SQS_Configuration" />
-		<logger level="INFO" doc:name="Log Count" message="Sent Message: `#[payload]`" />
-	
-</flow>
+	<flow name="sqs-receive-message-flow" >
+		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" waitTime="0" preserveMessages="true" primaryNodeOnly="true"/>
+		<set-variable value="#[attributes.'sqs.message.receipt.handle']" doc:name="Set Variable" doc:id="72de851e-4208-4bfd-b0eb-3214c7528ce3" variableName="handle"/>
+		<db:insert doc:name="Insert" doc:id="dc298759-c1c0-47a7-8bb3-653bb72a98be" config-ref="Database_Config">
+			<db:sql ><![CDATA[INSERT INTO customer1 (cid, val,replayId) 
+VALUES (:cid, :val,:replayId)
+ON DUPLICATE KEY UPDATE val=VALUES(val);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{cid:attributes.updateValue.stringValue, 
+ val:attributes.updateValue.stringValue,
+ replayId:attributes.replayId.stringValue
+}]]]></db:input-parameters>
+		</db:insert>
+		<sqs:delete-message doc:name="Delete message" doc:id="c2633b37-8299-4626-96a8-c024048d446f" config-ref="Amazon_SQS_Configuration" receiptHandle="#[vars.handle]" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo"/>
+	</flow>
 
 </mule>
