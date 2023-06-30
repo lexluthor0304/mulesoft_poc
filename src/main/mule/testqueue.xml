@@ -33,12 +33,13 @@ http://www.mulesoft.org/schema/mule/salesforce-pub-sub http://www.mulesoft.org/s
 		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" waitTime="0" preserveMessages="true" primaryNodeOnly="true"/>
 		<set-variable value="#[attributes.'sqs.message.receipt.handle']" doc:name="Set Variable" doc:id="72de851e-4208-4bfd-b0eb-3214c7528ce3" variableName="handle"/>
 		<db:insert doc:name="Insert" doc:id="dc298759-c1c0-47a7-8bb3-653bb72a98be" config-ref="Database_Config">
-			<db:sql ><![CDATA[INSERT INTO customer1 (cid, val,replayId) 
-VALUES (:cid, :val,:replayId)
+			<db:sql ><![CDATA[INSERT INTO customer2 (cid, val,replayId,sfdcId) 
+VALUES (:cid, :val,:replayId,:sfdcId)
 ON DUPLICATE KEY UPDATE val=VALUES(val);]]></db:sql>
 			<db:input-parameters ><![CDATA[#[{cid:attributes.updateValue.stringValue, 
  val:attributes.updateValue.stringValue,
- replayId:attributes.replayId.stringValue
+ replayId:attributes.replayId.stringValue,
+ sfdcId:attributes.customerId.stringValue
 }]]]></db:input-parameters>
 		</db:insert>
 		<sqs:delete-message doc:name="Delete message" doc:id="c2633b37-8299-4626-96a8-c024048d446f" config-ref="Amazon_SQS_Configuration" receiptHandle="#[vars.handle]" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo"/>
