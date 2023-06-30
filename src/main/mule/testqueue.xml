@@ -29,9 +29,6 @@ http://www.mulesoft.org/schema/mule/salesforce-pub-sub http://www.mulesoft.org/s
 	<salesforce-pub-sub:pubsub-config name="Salesforce_PubSub_Config" doc:name="Salesforce PubSub Config" doc:id="b368ed69-836b-4f09-9a1f-d93370d54eb6" >
 		<salesforce-pub-sub:basic-connection username="heng.cai@wise-bear-42dslc.com" password="Caiheng123" securityToken="MIaRYASRjwmfodc2fAVXCqDC" />
 	</salesforce-pub-sub:pubsub-config>
-	<sqs:config name="Amazon_SQS_Configuration2" doc:name="Amazon SQS Configuration" doc:id="683d0acd-f9de-45bf-b749-623356757002" >
-		<sqs:basic-connection testQueueArn="arn:aws:sqs:us-east-1:263584434972:bicsTest2.fifo" accessKey="AKIAT2XW3JMOPIO62RU2" secretKey="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" />
-	</sqs:config>
 	<flow name="sqs-receive-message-flow" >
 		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" waitTime="0" preserveMessages="true" primaryNodeOnly="true"/>
 		<set-variable value="#[attributes.'sqs.message.receipt.handle']" doc:name="Set Variable" doc:id="72de851e-4208-4bfd-b0eb-3214c7528ce3" variableName="handle"/>
@@ -46,21 +43,6 @@ ON DUPLICATE KEY UPDATE val=VALUES(val);]]></db:sql>
 }]]]></db:input-parameters>
 		</db:insert>
 		<sqs:delete-message doc:name="Delete message" doc:id="c2633b37-8299-4626-96a8-c024048d446f" config-ref="Amazon_SQS_Configuration" receiptHandle="#[vars.handle]" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo"/>
-	</flow>
-	<flow name="sqs-receive-message-flow2" doc:id="3aebf374-51c1-490d-a36b-a8532451d911" >
-		<sqs:receivemessages doc:name="Receive messages" doc:id="b4c5b354-06d4-482b-b4ae-cfb4434dbf81" config-ref="Amazon_SQS_Configuration2" preserveMessages="true" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest2.fifo" waitTime="0" primaryNodeOnly="true" />
-		<set-variable value="#[attributes.'sqs.message.receipt.handle']" doc:name="Set Variable" doc:id="e88fddac-0f55-4cbd-b95e-5757bee6cf7b" variableName="handle" />
-		<db:insert doc:name="Insert" doc:id="b529e8d8-31ef-4945-bc60-f5071365657c" config-ref="Database_Config" >
-			<db:sql ><![CDATA[INSERT INTO customer2 (cid, val,replayId,sfdcId) 
-VALUES (:cid, :val,:replayId,:sfdcId)
-ON DUPLICATE KEY UPDATE val=VALUES(val);]]></db:sql>
-			<db:input-parameters ><![CDATA[#[{cid:attributes.updateValue.stringValue, 
- val:attributes.updateValue.stringValue,
- replayId:attributes.replayId.stringValue,
- sfdcId:attributes.customerId.stringValue
-}]]]></db:input-parameters>
-		</db:insert>
-		<sqs:delete-message doc:name="Delete message" doc:id="3ccbf16c-3afc-4ef1-8a85-2086d3119691" config-ref="Amazon_SQS_Configuration2" receiptHandle="#[vars.handle]" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest2.fifo" />
 	</flow>
 
 </mule>
