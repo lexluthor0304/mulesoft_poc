@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:db="http://www.mulesoft.org/schema/mule/db"
-	xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs"
-	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+<mule xmlns:salesforce-pub-sub="http://www.mulesoft.org/schema/mule/salesforce-pub-sub" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:sqs="http://www.mulesoft.org/schema/mule/sqs" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http
   http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
@@ -12,63 +12,61 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
   http://www.mulesoft.org/schema/mule/sqs
 	http://www.mulesoft.org/schema/mule/sqs/current/mule-sqs.xsd
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
-http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/salesforce-pub-sub http://www.mulesoft.org/schema/mule/salesforce-pub-sub/current/mule-salesforce-pub-sub.xsd">
 	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" >
 		<http:listener-connection host="0.0.0.0" port="8081" />
 	</http:listener-config>
 	<sqs:config name="Amazon_SQS_Configuration" doc:name="Amazon SQS Configuration" doc:id="3a2a37e9-4eea-4409-b9db-ddc9d7734917" >
-		<sqs:basic-connection testQueueArn="arn:aws:sqs:us-east-1:263584434972:bics.fifo" accessKey="AKIAT2XW3JMOPIO62RU2" secretKey="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" />
+		<sqs:basic-connection testQueueArn="arn:aws:sqs:us-east-1:263584434972:bicsTest.fifo" accessKey="AKIAT2XW3JMOPIO62RU2" secretKey="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" />
 	</sqs:config>
 	<file:config name="File_Config" doc:name="File Config" doc:id="e0e1e169-440d-4f8c-b530-40b4a908d038" >
+		<file:connection workingDir="${mule.home}/apps/${app.name}" />
 	</file:config>
 	<db:config name="Database_Config" doc:name="Database Config" doc:id="627d3f32-0175-4012-b6c5-757d32ad28fd" >
 		<db:my-sql-connection host="bics.cydayjrmccnx.us-east-1.rds.amazonaws.com" port="3306" user="bics" password="bics" database="bics" />
 	</db:config>
+	<salesforce-pub-sub:pubsub-config name="Salesforce_PubSub_Config" doc:name="Salesforce PubSub Config" doc:id="b368ed69-836b-4f09-9a1f-d93370d54eb6" >
+		<salesforce-pub-sub:basic-connection username="heng.cai@wise-bear-42dslc.com" password="Caiheng123" securityToken="MIaRYASRjwmfodc2fAVXCqDC" />
+	</salesforce-pub-sub:pubsub-config>
 	<flow name="sqs-send-messageFlow" >
-		<http:listener doc:id="574426d1-761d-45e5-9095-77ffef381a5f" doc:name="" config-ref="HTTP_Listener_config" path="/testfifo"/>
-		<file:read doc:name="Read" doc:id="cac9a491-81c8-4096-bbbc-4dc55f715155" config-ref="File_Config" path="${mule.home}/apps/${app.name}/CustomerUpdateList.csv"/>
-		<foreach doc:name="For Each" doc:id="d94df06f-b9c3-4902-a074-f2099f6acd18" collection="#[payload]">
-			<logger level="INFO" doc:name="Logger" doc:id="44321cbd-5ea5-4a7b-978f-c616355c7235" />
-			<ee:transform doc:name="Transform Message" doc:id="1e0bd624-857a-4ac1-9de4-5849fd6a9178" >
-				<ee:message >
-					<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
----
-payload]]></ee:set-payload>
-				</ee:message>
-			</ee:transform>
-			<ee:transform doc:name="Transform Message" doc:id="9e29e43e-c3a3-4f09-96f3-7e863654535d" >
-				<ee:message >
-					<ee:set-payload ><![CDATA[%dw 2.0
+		<salesforce-pub-sub:subscribe-channel-listener doc:name="Subscribe channel listener" doc:id="a91667c7-614c-4306-856a-6931e9c1f0ae" config-ref="Salesforce_PubSub_Config" channelName="/event/PE_Acc__e">
+			<salesforce-pub-sub:replay-option >
+				<salesforce-pub-sub:latest />
+			</salesforce-pub-sub:replay-option>
+		</salesforce-pub-sub:subscribe-channel-listener>
+		<ee:transform doc:name="Transform Message" doc:id="9e29e43e-c3a3-4f09-96f3-7e863654535d">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 ---
 {
     delaySeconds: 0,
-    body: "correlationId" ++ correlationId,
-    deduplicationId: payload[0].messageId,
-    groupId: payload[0].groupId,
+    body: payload.replayId,
+    deduplicationId: payload.replayId,
+    groupId: payload.event.Id__c,
     messageAttributes: {
         "customerId": {
-            "stringValue" :payload[0].customerId,
-            "dataType" : "String.customerId"
+            "stringValue" :payload.event.Id__c,
+            "dataType" : "String"
         } as Object {
             class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
         },
         "customerName": {
-            "stringValue" :payload[0].customerName,
-            "dataType" : "String.customerName"
+            "stringValue" :payload.event.Name__c,
+            "dataType" : "String"
         } as Object {
             class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
         },
         "replayId": {
-            "stringValue" : payload[0].replayId,
-            "dataType" : "Number"
+            "stringValue" : payload.replayId,
+            "dataType" : "String"
         } as Object {
             class: "org.mule.extension.sqs.api.model.MessageAttributeValue"
         },
         "updateValue": {
-            "stringValue" : payload[0].updateValue,
-            "dataType" : "Number"
+            "stringValue" : payload.event.Name__c,
+            "dataType" : "String"
         } as Object {
             class : "org.mule.extension.sqs.api.model.MessageAttributeValue"
         } 
@@ -80,33 +78,13 @@ output application/java
 }]]></ee:set-payload>
 				</ee:message>
 			</ee:transform>
-			<logger level="INFO" doc:name="Logger" doc:id="59be58c1-f729-4602-9713-6fbb28e585ca" message='#[payload[0].updateValue]'/>
-			<sqs:send-message doc:name="Send message TestQueue" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" />
-			<logger level="INFO" doc:name="Log Response" message='#[payload]' />
-			<logger level="INFO" doc:name="Logger" doc:id="24e21693-6993-4af2-8fbe-fe97f53e4d22" message="sent success!!!!"/>
-			<sqs:get-approximate-number-of-messages doc:name="Get approximate number of messages TestQueue" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" config-ref="Amazon_SQS_Configuration" />
-			<logger level="INFO" doc:name="Log Count" message="Sent Message: `#[payload]`" />
-		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="59be58c1-f729-4602-9713-6fbb28e585ca" message="#[payload.event.Name__c]" />
+		<sqs:send-message doc:name="Send message TestQueue" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" />
+		<logger level="INFO" doc:name="Log Response" message="sssss"/>
+		<logger level="INFO" doc:name="Logger" doc:id="24e21693-6993-4af2-8fbe-fe97f53e4d22" message="sent success!!!!" />
+		<sqs:get-approximate-number-of-messages doc:name="Get approximate number of messages TestQueue" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" config-ref="Amazon_SQS_Configuration" />
+		<logger level="INFO" doc:name="Log Count" message="Sent Message: `#[payload]`" />
 	
 </flow>
-	<flow name="sqs-receive-message-flow" >
-		<sqs:receivemessages doc:name="Receive messages" config-ref="Amazon_SQS_Configuration" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo" preserveMessages="true" waitTime="0"/>
-		<ee:transform doc:name="Transform Message" doc:id="a7154f23-c96c-4acd-916d-dfd81fc17c66" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/java
----
-payload]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-		<logger level="INFO" doc:name="Log Receipt" message="#[attributes.updateValue.stringValue]" />
-		<db:insert doc:name="Insert" doc:id="dc298759-c1c0-47a7-8bb3-653bb72a98be" config-ref="Database_Config">
-			<db:sql ><![CDATA[insert into customer1(cid,val)values(:cid,:val)]]></db:sql>
-			<db:input-parameters ><![CDATA[#[{cid:attributes.updateValue.stringValue, 
- val:attributes.updateValue.stringValue	
-}]]]></db:input-parameters>
-		</db:insert>
-		<sqs:change-message-visibility doc:name="Change message visibility" doc:id="8abb1220-e758-4d4d-b154-00da3125158a" config-ref="Amazon_SQS_Configuration" visibilityTimeout="0" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bics.fifo"/>
-	</flow>
 
 </mule>

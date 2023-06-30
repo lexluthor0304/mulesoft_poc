@@ -16,13 +16,4 @@ type CustomerUpdateList = Array<{|  customerId: String,   customerName: String, 
       </types:properties>
     </types:type>
   </types:catalog>
-  <types:enrichment select="#1e0bd624-857a-4ac1-9de4-5849fd6a9178">
-    <types:processor-declaration>
-      <types:input-event>
-        <types:message>
-          <types:payload type="CustomerUpdateList"/>
-        </types:message>
-      </types:input-event>
-    </types:processor-declaration>
-  </types:enrichment>
 </types:mule>
