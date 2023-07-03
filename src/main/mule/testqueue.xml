@@ -30,12 +30,12 @@ http://www.mulesoft.org/schema/mule/salesforce-pub-sub http://www.mulesoft.org/s
 		<sqs:basic-connection testQueueArn="arn:aws:sqs:us-east-1:263584434972:bicsTest2.fifo" accessKey="AKIAT2XW3JMOPIO62RU2" secretKey="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" />
 	</sqs:config>
 	<flow name="sqs-receive-message-flow2" doc:id="3aebf374-51c1-490d-a36b-a8532451d911" >
-		<sqs:receivemessages doc:name="Receive messages" doc:id="b4c5b354-06d4-482b-b4ae-cfb4434dbf81" config-ref="Amazon_SQS_Configuration" preserveMessages="true" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest2.fifo" waitTime="0" primaryNodeOnly="true" frequency="1" timeUnit="MINUTES"/>
+		<sqs:receivemessages doc:name="Receive messages" doc:id="b4c5b354-06d4-482b-b4ae-cfb4434dbf81" config-ref="Amazon_SQS_Configuration" preserveMessages="true" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest2.fifo" waitTime="0" primaryNodeOnly="true" frequency="10" timeUnit="SECONDS" startDelay="10"/>
 		<set-variable value="#[attributes.'sqs.message.receipt.handle']" doc:name="Set Variable" doc:id="e88fddac-0f55-4cbd-b95e-5757bee6cf7b" variableName="handle" />
 		<db:insert doc:name="Insert" doc:id="b529e8d8-31ef-4945-bc60-f5071365657c" config-ref="Database_Config" >
 			<db:sql ><![CDATA[INSERT INTO customer2 (cid, val,replayId,sfdcId) 
 VALUES (:cid, :val,:replayId,:sfdcId)
-ON DUPLICATE KEY UPDATE val=VALUES(val);]]></db:sql>
+ON DUPLICATE KEY UPDATE val=VALUES(val), cid=VALUES(cid), replayId=VALUES(replayId);]]></db:sql>
 			<db:input-parameters ><![CDATA[#[{cid:attributes.updateValue.stringValue, 
  val:attributes.updateValue.stringValue,
  replayId:attributes.replayId.stringValue,
