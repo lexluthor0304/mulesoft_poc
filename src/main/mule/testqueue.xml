@@ -25,6 +25,9 @@ http://www.mulesoft.org/schema/mule/salesforce-pub-sub http://www.mulesoft.org/s
 	<file:config name="File_Config" doc:name="File Config" doc:id="e0e1e169-440d-4f8c-b530-40b4a908d038" >
 		<file:connection workingDir="${mule.home}/apps/${app.name}" />
 	</file:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="b5c213b6-70d2-419f-86d6-4621b2ae8603" >
+		<db:my-sql-connection host="database-1.cxmxus7frfnz.us-east-1.rds.amazonaws.com" port="3306" user="bics" password="bics" database="bics" />
+	</db:config>
 	<flow name="sqs-send-messageFlow" >
 		<http:listener doc:name="Listener" doc:id="3cea91f6-3eba-4f0b-99b2-041ad73ccd27" config-ref="HTTP_Listener_config" path="/testfifo"/>
 		<file:read doc:name="Read" doc:id="4ee12748-bfc2-436b-9d48-8d4f8bff5383" path="${mule.home}/apps/${app.name}/CustomerUpdateList.csv" config-ref="File_Config"/>
@@ -81,7 +84,7 @@ output application/java
 			<file:content><![CDATA[#[""]]]></file:content>
 		</file:write>
 		<set-variable value="0" doc:name="Set Variable" doc:id="804caf4f-8d1b-4d62-801b-7b39438dfebe" variableName="counter"/>
-		<try doc:name="Try" doc:id="fdca61dc-7abd-4946-8e0c-e815ee82fe15" >
+		<try doc:name="Try" doc:id="fdca61dc-7abd-4946-8e0c-e815ee82fe15" transactionalAction="ALWAYS_BEGIN">
 			<until-successful maxRetries="50" doc:name="Until Successful" doc:id="108fb9db-5333-48e9-ae22-dcadbb484ca3" millisBetweenRetries="1000">
 				<sqs:read doc:name="Read" doc:id="a0f56ee2-2617-4fca-ba9a-82c2cec6b0ec" config-ref="Amazon_SQS_Configuration" maxNumberOfMessages="2" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo" />
 				<ee:transform doc:name="Transform Message" doc:id="1c8290a1-c4d7-43fc-aec9-f08c240b74fc">
@@ -112,8 +115,53 @@ payload]]></ee:set-payload>
 					</when>
 				</choice>
 		</until-successful>
+			<flow-ref doc:name="Flow Reference" doc:id="b5c30bad-f6a2-42d8-9875-37610c6e0970" name="subFlow1"/>
+			<flow-ref doc:name="Flow Reference" doc:id="4fba081c-de7a-4850-bbec-4b1802179548" name="subFlow2"/>
 			<logger level="INFO" doc:name="Logger" doc:id="4c902073-4c8a-4e62-89c9-8e4bef612dd8" />
 		</try>
 	</flow>
+	<sub-flow name="subFlow1" doc:id="3905d0bb-bd69-4acd-9e38-d15c7010ff76">
+		<file:read doc:name="Read" doc:id="49900441-9383-452b-8612-f47881106782" path="${mule.home}/apps/${app.name}/read002.csv" />
+		<ee:transform doc:name="Transform Message" doc:id="039ee54e-77d6-480a-b72c-bd7864983384">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+var filteredPayload = payload filter (item, index) -> item.id != "id"
+---
+filteredPayload map (payload01, indexOfPayload01) -> {
+	customerId: payload01.customerId default "",
+	updateValue: payload01.updateValue default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="01a319a9-da67-465b-966e-3f9926668f07" collection="#[payload]">
+			<db:insert doc:name="Insert" doc:id="13070f59-bc75-422c-a242-f64daa3b80ec" config-ref="Database_Config" transactionalAction="ALWAYS_JOIN">
+			<db:sql><![CDATA[insert into customes(id,name)values(:id,:name)]]></db:sql>
+				<db:input-parameters><![CDATA[#[{
+        'id' : payload.customerId,
+        'name' : payload.updateValue
+}]]]></db:input-parameters>
+		</db:insert>
+		</foreach>
+	</sub-flow>
+	<sub-flow name="subFlow2" doc:id="462213f8-3398-4079-b32a-85d75d810c2b" >
+		<file:read doc:name="Read" doc:id="819887e8-5ce6-4f48-89c4-478b03390554" path="${mule.home}/apps/${app.name}/read002.csv" />
+		<ee:transform doc:name="Transform Message" doc:id="a2c5f276-a378-4a7d-96f6-a282e47995ce" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+var filteredPayload = payload filter (item, index) -> item.id != "id"
+---
+filteredPayload map (payload01, indexOfPayload01) -> {
+	id: payload01.id default "",
+	"ReceiptHandle": payload01."Receipt handle" default ""
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="1d993328-eecf-4bc0-bff8-9171f059548e" collection="#[payload]">
+			<sqs:delete-message doc:name="Delete message" doc:id="3ce9bb98-9aaa-4e82-ac8d-757434144a8c" config-ref="Amazon_SQS_Configuration" receiptHandle="#[payload.ReceiptHandle]" queueUrl="https://sqs.us-east-1.amazonaws.com/263584434972/bicsTest.fifo"/>
+		</foreach>
+		<logger level="INFO" doc:name="Logger1" doc:id="a670ee43-7736-4d98-acf4-c44e134b120b" />
+	</sub-flow>
 
 </mule>
